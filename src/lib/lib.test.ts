@@ -387,6 +387,8 @@ describe("outlook", async () => {
     const smoggy = { ...snapshot, air: { ...snapshot.air!, pm25: 100 } };
     expect(outlook(clean).some((line) => line.kind === "air")).toBe(false);
     expect(outlook(smoggy).find((line) => line.kind === "air")?.text).toBe("Unhealthy air (AQI 182)");
+    const hazy = { ...snapshot, air: { ...snapshot.air!, pm25: 45 } };
+    expect(outlook(hazy).find((line) => line.kind === "air")?.text).toBe("Air unhealthy for sensitive groups (AQI 124)");
     expect(outlook({ ...snapshot, air: undefined }).some((line) => line.kind === "air")).toBe(false);
   });
 });

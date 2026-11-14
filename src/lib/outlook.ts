@@ -44,7 +44,11 @@ export function outlook(snapshot: Snapshot): OutlookLine[] {
   if (snapshot.air) {
     const aqi = usAqi(snapshot.air.pm25);
     const band = aqiBand(aqi);
-    if (band.level >= 3) lines.push({ kind: "air", text: `${band.label} air (AQI ${aqi})` });
+    if (band.level >= 3) {
+      // "Unhealthy air", "Hazardous air", but "Air unhealthy for sensitive groups".
+      const phrase = band.label.includes(" for ") ? `Air ${band.label.toLowerCase()}` : `${band.label} air`;
+      lines.push({ kind: "air", text: `${phrase} (AQI ${aqi})` });
+    }
   }
   return lines;
 }
