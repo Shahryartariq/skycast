@@ -18,6 +18,14 @@ function readRecent(): Place[] {
   }
 }
 
+function clearRecent() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    // Storage blocked: there was nothing saved anyway.
+  }
+}
+
 function saveRecent(place: Place) {
   try {
     const rest = readRecent().filter((p) => placeLabel(p) !== placeLabel(place));
@@ -27,7 +35,7 @@ function saveRecent(place: Place) {
   }
 }
 
-type Status = "idle" | "loading" | "done" | "error";
+type Status = "idle" | "loading" | "done" | "error" | "limited";
 
 /**
  * City search as an ARIA combobox. Works without JavaScript too: the form submits
@@ -60,6 +68,11 @@ export function SearchBox({ units, popular = [] }: { units: Units; popular?: Pla
         const response = await fetch(`/api/places?q=${encodeURIComponent(trimmed)}`, {
           signal: controller.signal,
         });
+        if (response.status === 429) {
+          setResults([]);
+          setStatus("limited");
+          return;
+        }
         if (!response.ok) throw new Error(String(response.status));
         const data: { places: Place[] } = await response.json();
         setResults(data.places);
@@ -160,7 +173,24 @@ export function SearchBox({ units, popular = [] }: { units: Units; popular?: Pla
 
       <div className={expanded ? "search-panel is-open" : "search-panel"}>
         {showingRecent && options.length > 0 && (
-          <p className="search-heading">{recent.length > 0 ? "Recent" : "Popular"}</p>
+          <div className="search-heading">
+            <span>{recent.length > 0 ? "Recent" : "Popular"}</span>
+            {recent.length > 0 && (
+              <button
+                type="button"
+                className="search-clear"
+                aria-label="Clear recent places"
+                onPointerDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  clearRecent();
+                  setRecent([]);
+                  setActive(-1);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         )}
         <ul
           id={listId}
@@ -187,6 +217,9 @@ export function SearchBox({ units, popular = [] }: { units: Units; popular?: Pla
         )}
         {!showingRecent && status === "done" && options.length === 0 && (
           <p className="search-note">Nothing found for “{trimmed}”. Check the spelling, or add a country: “Paris, FR”.</p>
+        )}
+        {!showingRecent && status === "limited" && (
+          <p className="search-note">Too many searches. Wait a minute, then try again.</p>
         )}
         {!showingRecent && status === "error" && (
           <p className="search-note">Search isn&apos;t working right now. Press Enter to try a full search.</p>

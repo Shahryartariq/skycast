@@ -108,6 +108,65 @@ test.describe("weather at my location", () => {
   }
 });
 
+test.describe("flows", () => {
+  test("coordinates near a listed city open its full page", async ({ page }) => {
+    await page.goto("/?lat=31.55&lon=74.34");
+    await expect(page).toHaveURL(/\/weather\/lahore$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Lahore weather" })).toBeVisible();
+  });
+
+  test("finds a city typed with the country, without a comma", async ({ page }) => {
+    await page.goto("/?q=" + encodeURIComponent("karachi pakistan"));
+    await expect(page).toHaveURL(/\/weather\/karachi$/);
+  });
+
+  test("recent places can be cleared", async ({ page }) => {
+    await page.goto("/");
+    const box = page.getByRole("combobox", { name: "Search for a city" });
+    await box.fill("paris");
+    await page.getByRole("option", { name: /Paris/ }).click();
+    await expect(page).toHaveURL(/lat=/);
+
+    await box.focus();
+    await expect(page.getByRole("listbox", { name: "Recent places" })).toContainText("Paris");
+    await page.getByRole("button", { name: "Clear recent places" }).click();
+    await expect(page.getByRole("listbox", { name: "Popular places" })).toBeVisible();
+    await page.reload();
+    await box.focus();
+    await expect(page.getByRole("listbox", { name: "Popular places" })).toBeVisible();
+  });
+
+  test("shows an offline page instead of the browser's error", async ({ page, context, browserName }) => {
+    test.skip(browserName !== "chromium", "Service workers are tested in Chromium");
+    await page.goto("/");
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    // The worker takes control after it activates; reload so this page is controlled.
+    await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+    await context.setOffline(true);
+    await page.goto("/weather/multan").catch(() => {});
+    await expect(page.getByRole("heading", { level: 1, name: "You're offline" })).toBeVisible();
+    await context.setOffline(false);
+    await page.getByRole("link", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Multan weather" })).toBeVisible();
+  });
+
+  test("old social card addresses redirect to the new ones", async ({ request }) => {
+    const response = await request.get("/weather/lahore/opengraph-image", { maxRedirects: 0 });
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe("/weather/lahore/opengraph-image/card");
+    expect((await request.get("/weather/lahore/opengraph-image/card")).headers()["content-type"]).toBe("image/png");
+  });
+
+  test("social cards name the place in their alt text", async ({ page }) => {
+    await page.goto("/pakistan/sindh");
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute("content", "Sindh weather forecast on Skycast");
+  });
+});
+
 test.describe("weather", () => {
   test("the home page shows the whole country", async ({ page }) => {
     await page.goto("/");
@@ -580,8 +639,8 @@ test.describe("SEO", () => {
 
     for (const path of [
       "/opengraph-image",
-      "/weather/skardu/opengraph-image",
-      "/pakistan/sindh/opengraph-image",
+      "/weather/skardu/opengraph-image/card",
+      "/pakistan/sindh/opengraph-image/card",
       "/air-quality/opengraph-image",
       "/apple-icon",
       "/pwa-icon/192",

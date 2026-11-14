@@ -1,0 +1,58 @@
+/* For the offline page and the "too many searches" page: plain, no fonts, no scripts. */
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8;
+  --ink: #18202a;
+  --muted: #5a6573;
+  --accent: #2463a6;
+  --on-accent: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1217;
+    --ink: #e8edf3;
+    --muted: #a4afbc;
+    --accent: #7db4ee;
+    --on-accent: #0b1530;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 1.05rem/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 18vh 20px 40px;
+}
+
+h1 {
+  margin: 20px 0 8px;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+
+p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.button {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  text-decoration: none;
+}

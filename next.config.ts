@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async redirects() {
-    return [{ source: "/pakistan", destination: "/", permanent: true }];
+    return [
+      { source: "/pakistan", destination: "/", permanent: true },
+      // Social cards moved when they gained per-city alt text; old shares still point here.
+      { source: "/weather/:city/opengraph-image", destination: "/weather/:city/opengraph-image/card", permanent: true },
+      { source: "/pakistan/:province/opengraph-image", destination: "/pakistan/:province/opengraph-image/card", permanent: true },
+    ];
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
