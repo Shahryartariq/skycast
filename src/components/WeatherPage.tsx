@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { skyFor } from "@/lib/conditions";
+import { effectFor } from "@/lib/effects";
 import type { Outcome } from "@/lib/load";
 import type { Units } from "@/lib/types";
 
@@ -9,6 +10,7 @@ import { Details } from "./Details";
 import { Daily, Hourly } from "./Forecast";
 import { Hero } from "./Hero";
 import { Shell } from "./Shell";
+import { SkyEffects } from "./SkyEffects";
 
 /**
  * A place's forecast, shared by city pages and searches for anywhere else in the world.
@@ -51,13 +53,17 @@ export function WeatherPage({
 
   return (
     <Shell sky={sky} units={units} unitPath={basePath} keep={keep} region={region}>
-      <div className="sky">
+      <div className={outcome.kind === "ok" ? "sky sky-fx" : "sky"}>
+        {outcome.kind === "ok" && (
+          <SkyEffects effect={effectFor(outcome.snapshot.current.condition, outcome.snapshot.current.feelsLike)} />
+        )}
         {crumbs}
         {outcome.kind === "ok" ? (
-          <>
+          // Keyed by place, so moving to another place replays the arrival animation.
+          <div className="arrive" key={`${outcome.snapshot.place.lat},${outcome.snapshot.place.lon}`}>
             <Hero snapshot={outcome.snapshot} units={units} nameUr={nameUr} />
             <Hourly hours={outcome.snapshot.hourly} offset={outcome.snapshot.timezoneOffset} units={units} />
-          </>
+          </div>
         ) : (
           <Notice outcome={outcome} />
         )}

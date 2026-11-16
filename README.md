@@ -37,6 +37,7 @@ Measured on the home, city, province and air quality pages of a local production
 - **The outlook at a glance**: every forecast says when rain is most likely ("Rain likely on Sunday, 82%") and flags unhealthy air.
 - **Search anywhere in the world**, with keyboard-friendly suggestions. The big cities are offered before you type, and recent places are remembered on your device until you clear them.
 - **Weather at my location, no typing**: [/my-location](https://getskycast.vercel.app/my-location) shows your IP address, your approximate place and its forecast, with no permission prompt. One tap switches to your exact location instead.
+- **A background that matches the weather**: light rain or snow falling behind the forecast, frost in the corners when it feels 5°C or colder, a warm glow at 35°C and up, and slow clouds on ordinary days. A city's forecast slides in when you open it. Everything stays still if your device asks for reduced motion.
 - °C or °F, remembered for your next visit, and times in the place's own time zone.
 - **Dark mode**: follows your device by default, or pick light or dark. The choice is remembered, with no flash on load, and open tabs stay in step.
 - **Works without JavaScript**: pages render on the server, search falls back to a normal form, and the theme follows your device.
@@ -113,6 +114,8 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 - `sitemap.xml` lists all 60 indexable pages. Search lookups, the °F view and preview deployments stay out of the index.
 - Open Graph and Twitter cards with a generated image for every city and province.
 - Unknown addresses return a real `404`, and old URLs redirect.
+
+**Weather effects in CSS, not a canvas.** The background effects are a few dozen empty elements animated with `transform` and `opacity` only, so they run on the compositor and never trigger layout. The per-particle values (position, speed, delay) come from `nth-child` rules in the stylesheet rather than inline styles, because the strict CSP blocks `style` attributes. Rain and snow go by the condition; otherwise the "feels like" temperature picks cold, hot or calm (`src/lib/effects.ts`). The arrival fade starts at 30% opacity, not zero, because fully transparent text doesn't count as painted and would delay Largest Contentful Paint.
 
 ## Security and accessibility
 
