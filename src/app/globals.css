@@ -1925,19 +1925,24 @@ a.icon-button {
    only. Per-piece values below are fixed, generated once; the CSP blocks inline styles.
    --------------------------------------------------------------------------------------------- */
 
-/* Only skies that carry an effect: clipping every sky would cut off popovers elsewhere. */
+/* The effect sits under the sky's content and never above anything outside the sky: the
+   cards below overlap the sky by 72px, so the sky must not get its own stacking layer. */
 .sky-fx {
   position: relative;
-  isolation: isolate;
-  overflow: hidden;
+}
+
+.sky-fx > :not(.fx),
+.sky-fx + .almanac {
+  position: relative;
 }
 
 .fx {
   position: absolute;
   inset: 0;
-  z-index: -1;
   overflow: hidden;
   pointer-events: none;
+  /* Fade out at the top and bottom so the sky's own gradient stays seamless. */
+  mask-image: linear-gradient(transparent, #000 18%, #000 70%, transparent);
 }
 
 .fx i {
@@ -2002,10 +2007,8 @@ a.icon-button {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 45% 60% at 0% 0%, rgb(225 240 255 / 34%), transparent 72%),
-    radial-gradient(ellipse 40% 55% at 100% 0%, rgb(225 240 255 / 28%), transparent 72%),
-    radial-gradient(ellipse 70% 40% at 50% 100%, rgb(205 230 255 / 18%), transparent 72%),
-    linear-gradient(rgb(210 235 255 / 6%), rgb(210 235 255 / 6%));
+    radial-gradient(ellipse 40% 70% at 0% 30%, rgb(220 238 255 / 16%), transparent 70%),
+    radial-gradient(ellipse 35% 65% at 100% 30%, rgb(220 238 255 / 12%), transparent 70%);
 }
 
 .fx-cold i {
@@ -2037,8 +2040,7 @@ a.icon-button {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 55% 420px at 88% 0%, rgb(255 175 90 / 40%), transparent 75%),
-    linear-gradient(rgb(255 160 80 / 14%), transparent 520px);
+    radial-gradient(ellipse 50% 70% at 90% 25%, rgb(255 175 90 / 26%), transparent 72%);
   animation: fx-warm 7s ease-in-out infinite alternate;
 }
 

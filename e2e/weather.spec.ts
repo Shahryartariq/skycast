@@ -270,6 +270,15 @@ test.describe("weather", () => {
     await page.goto("/weather/skardu");
     await expect(page.locator(".fx")).toHaveAttribute("data-effect", "rain");
     await expect(page.locator(".fx")).toHaveAttribute("aria-hidden", "true");
+    // The cards overlap the bottom of the sky; the sky must never paint over them.
+    const heading = page.getByRole("heading", { name: "5-day forecast" });
+    await heading.scrollIntoViewIfNeeded();
+    const box = (await heading.boundingBox())!;
+    const onTop = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest(".almanac") !== null,
+      [box.x + 4, box.y + box.height / 2],
+    );
+    expect(onTop, "the forecast cards are drawn above the sky").toBe(true);
     await page.goto("/weather/lahore");
     await expect(page.locator(".fx")).toHaveAttribute("data-effect", "calm");
     await page.goto("/");
