@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 
+import { ServiceWorker } from "@/components/ServiceWorker";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { measurementId } from "@/lib/analytics";
 import { AUTHOR, SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
@@ -75,6 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body suppressHydrationWarning>
         <ThemeProvider initial={theme}>{children}</ThemeProvider>
+        <ServiceWorker />
       </body>
       {gaId && <GoogleAnalytics gaId={gaId} nonce={nonce} />}
     </html>

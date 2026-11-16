@@ -19,6 +19,7 @@ export default defineConfig({
     command: `npm run start -- -p ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    env: { WEATHER_SAMPLE_DATA: "1", SITE_URL: "https://getskycast.vercel.app" },
+    // The lookup limit is tested in unit tests; here it would only make parallel runs flaky.
+    env: { WEATHER_SAMPLE_DATA: "1", SITE_URL: "https://getskycast.vercel.app", SKYCAST_LOOKUPS_PER_MINUTE: "100000" },
   },
 });

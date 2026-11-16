@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
 import { CITIES, type City } from "./cities";
@@ -76,8 +77,38 @@ export async function loadNow(cities: City[]): Promise<CityNow[]> {
   return results.flatMap((result, i) => (result.status === "fulfilled" ? [{ city: cities[i], ...result.value }] : []));
 }
 
+/**
+ * Kept whole for a few minutes: the home, province and air pages need all 50 cities, and one
+ * cache read is much quicker than 50. Only complete-enough results are kept: a throw inside
+ * unstable_cache stores nothing, and the caller then falls back to loading city by city.
+ */
+const NATION_TTL = 300;
+
+class Incomplete extends Error {}
+
+const cachedNation = unstable_cache(
+  async () => {
+    const now = await loadNow(CITIES);
+    if (now.length < CITIES.length * 0.8) throw new Incomplete();
+    return now.map(({ city, ...rest }) => ({ slug: city.slug, ...rest }));
+  },
+  ["nation-now-v1"],
+  { revalidate: NATION_TTL },
+);
+
 /** Current weather in every city. */
-export const loadNation = cache(() => loadNow(CITIES));
+export const loadNation = cache(async (): Promise<CityNow[]> => {
+  try {
+    const rows = await cachedNation();
+    const bySlug = new Map(CITIES.map((city) => [city.slug, city]));
+    return rows.flatMap(({ slug, ...rest }) => {
+      const city = bySlug.get(slug);
+      return city ? [{ city, ...rest }] : [];
+    });
+  } catch {
+    return loadNow(CITIES);
+  }
+});
 
 export interface CityAir {
   city: City;
@@ -85,8 +116,7 @@ export interface CityAir {
   pm25: number;
 }
 
-/** Estimated air quality in every city, worst first. */
-export const loadNationAir = cache(async (): Promise<CityAir[]> => {
+async function loadAir(): Promise<CityAir[]> {
   const results = await Promise.allSettled(CITIES.map((city) => getAir(city)));
   return results
     .flatMap((result, i) =>
@@ -95,6 +125,30 @@ export const loadNationAir = cache(async (): Promise<CityAir[]> => {
         : [],
     )
     .sort((a, b) => b.pm25 - a.pm25);
+}
+
+const cachedAir = unstable_cache(
+  async () => {
+    const air = await loadAir();
+    if (air.length < CITIES.length * 0.8) throw new Incomplete();
+    return air.map(({ city, ...rest }) => ({ slug: city.slug, ...rest }));
+  },
+  ["nation-air-v1"],
+  { revalidate: NATION_TTL * 2 },
+);
+
+/** Estimated air quality in every city, worst first. */
+export const loadNationAir = cache(async (): Promise<CityAir[]> => {
+  try {
+    const rows = await cachedAir();
+    const bySlug = new Map(CITIES.map((city) => [city.slug, city]));
+    return rows.flatMap(({ slug, ...rest }) => {
+      const city = bySlug.get(slug);
+      return city ? [{ city, ...rest }] : [];
+    });
+  } catch {
+    return loadAir();
+  }
 });
 
 /** Pages about the whole country take their sky from the capital. */

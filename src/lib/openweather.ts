@@ -83,6 +83,15 @@ async function get<T>(path: string, params: Record<string, string | number>, ttl
 /** Rounds coordinates so nearby requests share one cache entry (≈100 m). */
 const round = (value: number) => Math.round(value * 1000) / 1000;
 
+/**
+ * Coordinates as sent for weather. Two decimals (≈1 km) is finer than any forecast grid, and it
+ * means a script sending endless slightly different coordinates mostly hits the cache.
+ */
+const weatherCoords = (place: Pick<Place, "lat" | "lon">) => ({
+  lat: Math.round(place.lat * 100) / 100,
+  lon: Math.round(place.lon * 100) / 100,
+});
+
 function toPlace(result: OWGeoResult): Place {
   return {
     name: result.local_names?.en ?? result.name,
@@ -140,7 +149,7 @@ export async function placeAt(lat: number, lon: number): Promise<Place> {
 
 export async function getSnapshot(place: Place): Promise<Snapshot> {
   if (usingSampleData()) return sampleSnapshot(place);
-  const coords = { lat: place.lat, lon: place.lon };
+  const coords = weatherCoords(place);
   const [current, forecast, air] = await Promise.all([
     get<OWCurrent>("/data/2.5/weather", { ...coords, units: "metric" }, CURRENT_TTL),
     get<OWForecast>("/data/2.5/forecast", { ...coords, units: "metric" }, FORECAST_TTL),
@@ -161,7 +170,7 @@ export interface Brief {
 /** Air quality alone, for the ranking of cities. Shares its cache entry with the city page. */
 export async function getAir(place: Place): Promise<AirQuality | undefined> {
   if (usingSampleData()) return sampleAir(place);
-  return buildAir(await get<OWAir>("/data/2.5/air_pollution", { lat: place.lat, lon: place.lon }, AIR_TTL));
+  return buildAir(await get<OWAir>("/data/2.5/air_pollution", weatherCoords(place), AIR_TTL));
 }
 
 /** Plausible, stable sample values that differ from city to city. */
@@ -189,7 +198,7 @@ export async function getBrief(place: Place): Promise<Brief> {
   }
   const current = await get<OWCurrent>(
     "/data/2.5/weather",
-    { lat: place.lat, lon: place.lon, units: "metric" },
+    { ...weatherCoords(place), units: "metric" },
     CURRENT_TTL,
   );
   return {

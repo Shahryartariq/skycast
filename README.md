@@ -35,12 +35,12 @@ Measured on the home, city, province and air quality pages of a local production
 - **Climate tables** for every city: monthly highs, lows and rain, the most comfortable months and the wettest.
 - **Six province pages** and a **live air quality ranking** of every city, with health guidance for each level.
 - **The outlook at a glance**: every forecast says when rain is most likely ("Rain likely on Sunday, 82%") and flags unhealthy air.
-- **Search anywhere in the world**, with keyboard-friendly suggestions. The big cities are offered before you type, and recent places are remembered on your device.
+- **Search anywhere in the world**, with keyboard-friendly suggestions. The big cities are offered before you type, and recent places are remembered on your device until you clear them.
 - **Weather at my location, no typing**: [/my-location](https://getskycast.vercel.app/my-location) shows your IP address, your approximate place and its forecast, with no permission prompt. One tap switches to your exact location instead.
 - °C or °F, remembered for your next visit, and times in the place's own time zone.
 - **Dark mode**: follows your device by default, or pick light or dark. The choice is remembered, with no flash on load, and open tabs stay in step.
 - **Works without JavaScript**: pages render on the server, search falls back to a normal form, and the theme follows your device.
-- **Installable** on a phone's home screen.
+- **Installable** on a phone's home screen, with an offline page instead of the browser's error when the connection drops. Weather is never cached on the device, so an old forecast is never shown as current.
 
 <p align="center">
   <img src="docs/screenshot-city.png" alt="The Lahore page, with current conditions and an hourly forecast" width="48%">
@@ -59,7 +59,7 @@ Measured on the home, city, province and air quality pages of a local production
 | Live data | [OpenWeather](https://openweathermap.org/api) current weather, 5-day forecast, air pollution and geocoding APIs (free plan) |
 | Climate data | ERA5 reanalysis through [Open-Meteo](https://open-meteo.com/), built into a static file by a script |
 | Tests | Vitest (75 unit and API tests), Playwright (130 end-to-end runs on desktop and mobile), axe-core accessibility checks in both themes |
-| CI | GitHub Actions: lint, type check, unit tests, build, end-to-end tests |
+| CI | GitHub Actions: dependency audit, lint, type check, unit tests, build, end-to-end tests; CodeQL code scanning; Dependabot |
 | Hosting | Vercel |
 
 ## How it works
@@ -78,8 +78,9 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 
 - **The API key stays on the server.** The browser only talks to this app, so the key never appears in the HTML, the JavaScript bundle or network requests.
 - **Each kind of data is cached for as long as it stays true**: current weather for 10 minutes, the forecast for 30 (it comes in 3-hour steps), air quality for an hour (it's an hourly model), place lookups for a week. With all 50 cities kept warm that's about 7.5 calls a minute, roughly a third of the free plan's monthly allowance.
-- **Pages share their requests.** A city's reading on the home page, its province page and its own page is one cached call.
-- **Failure is contained.** A rate limit or dropped connection gets one retry. If a city still fails, it keeps its card and link but loses the number, so one bad reading never takes down a page. An error page is marked `noindex`, so it can't replace a good page in search results.
+- **The server runs in Mumbai** (`vercel.json`), the closest Vercel region to Pakistan. Vercel's default is Washington, which put a round trip from Singapore to the US East Coast in front of every page.
+- **Pages share their requests.** A city's reading on the home page, its province page and its own page is one cached call. The home, province and air quality pages also keep all 50 readings as one cache entry for five minutes, so they make one cache read instead of 100. A set with more than a fifth of the cities missing is never kept.
+- **Failure is contained.** A rate limit or dropped connection gets one retry. If a city still fails, it keeps its card and link but loses the number, so one bad reading never takes down a page. If a whole page fails, the error page has search and a "Try again" that fetches the page again from the server. It's marked `noindex`, so it can't replace a good page in search results.
 - **Climate data is built once, not fetched at runtime.** A script reduces 10 years of daily data per city to 12 monthly rows. The app makes no calls for it and has no dependency on that service.
 - **The raw API data becomes one typed `Snapshot`** in `src/lib/forecast.ts`. That code is pure functions with unit tests.
 
@@ -118,6 +119,8 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 - A strict Content Security Policy with a fresh nonce on every request (`src/proxy.ts`, `src/lib/csp.ts`), plus `X-Frame-Options`, `Referrer-Policy`, HSTS and a `Permissions-Policy` that allows only geolocation.
 - Google Analytics is opt-in through `GA_MEASUREMENT_ID` and loads under the same nonce-based policy. Locations from "Use my exact location" are rounded to about 1 km before they go into the URL. The IP address on `/my-location` is shown only to its owner and never stored, logged by the app or sent to analytics.
 - Input to `/api/places` is validated, and errors never echo the upstream URL (which holds the key).
+- Searches and coordinates that reach OpenWeather are rate-limited per IP address (30 a minute for pages, 60 for suggestions), with a plain "Too many searches" page. Weather calls round coordinates to about 1 km, so a script sending endless slightly different coordinates mostly hits the cache.
+- CI fails on high-severity advisories in production dependencies, actions are pinned to exact commits, and CodeQL scans every pull request. See [SECURITY.md](SECURITY.md) to report a problem.
 - Landmarks, a skip link, a fully keyboard-operable search combobox, visible focus, text contrast of at least 4.5:1 on every sky colour, and support for reduced motion. End-to-end tests run axe-core on every page type and fail on any serious WCAG 2.1 AA issue.
 
 ## Known limits
@@ -125,13 +128,13 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 - Skycast isn't a warning service. For floods and heat waves, follow the [Pakistan Meteorological Department](https://www.pmd.gov.pk/) and [NDMA](https://www.ndma.gov.pk/).
 - AQI figures are estimates from a global model, not local monitors, so they can differ from sites that use sensors.
 - Mountain forecasts and climate averages are less accurate than those for the plains. Averages can run several degrees cool in deep valleys.
-- The free OpenWeather plan allows 60 calls a minute, and a fully cold cache needs more than that. Readings that miss out fill in on later requests. `/api/places` and `?lat=` lookups can spend quota too, so a busier site should add a rate-limit rule in the Vercel Firewall.
+- The free OpenWeather plan allows 60 calls a minute, and a fully cold cache needs more than that. Readings that miss out fill in on later requests. Lookups are rate-limited per server instance, which stops bursts from one client; a busier site should also add a rate-limit rule in the Vercel Firewall, which counts across all instances.
 - `/my-location` relies on Vercel's IP headers. Run anywhere else (including `npm run dev`), it shows "We couldn't tell where you are" and offers the exact location instead.
 - The interface is in English, with Urdu names and search. Full Urdu pages are the natural next step.
 
 ## Run it locally
 
-You need Node.js 20.9 or newer.
+You need Node.js 20.9 or newer; CI and the scripts use the version in `.nvmrc` (22).
 
 ```bash
 npm install
@@ -156,6 +159,7 @@ WEATHER_SAMPLE_DATA=1 npm run dev
 | `GOOGLE_SITE_VERIFICATION` | No | The code from Google Search Console's HTML tag method. |
 | `GA_MEASUREMENT_ID` | No | Google Analytics 4 measurement ID (`G-…`). When set, the Google tag loads with the page's CSP nonce and the policy allows Google's analytics hosts; when unset, nothing from Google loads. |
 | `WEATHER_SAMPLE_DATA` | No | Set to `1` to use the sample data in `src/lib/fixtures`. Ignored in Vercel production. |
+| `SKYCAST_LOOKUPS_PER_MINUTE` | No | Searches and coordinate lookups allowed per IP per minute (default 30; suggestions get twice that). |
 
 ## Scripts
 
@@ -184,7 +188,7 @@ src/
     air-quality/, about/     Air quality ranking; sources and limits
     api/places/route.ts      City search for the search box
     sitemap.ts, robots.ts, manifest.ts, opengraph-image.tsx, apple-icon.tsx, pwa-icon/
-    layout.tsx, error.tsx, not-found.tsx, globals.css
+    layout.tsx, error.tsx, global-error.tsx, not-found.tsx, globals.css
   components/                Page shell, national view, map, forecasts, climate, search, theme, icons
   lib/
     cities.ts                The 50 places: coordinates, Urdu names, aliases, search
@@ -193,6 +197,7 @@ src/
     outlook.ts               The rain and air-quality line under each forecast
     seo.ts                   Page metadata and structured data
     csp.ts, analytics.ts     Security policy; optional Google Analytics
+    rate-limit.ts            Per-IP limits on lookups that reach OpenWeather
     theme.ts, units.ts       Cookies that remember the theme and °F
     openweather.ts           Server-only API client (key, caching, retries, sample data)
     load.ts                  Loading and error handling shared by the pages
@@ -201,7 +206,8 @@ src/
     format.ts, time.ts       Units, US AQI, conversions and time zones
     query.ts, site.ts        URLs and the canonical address
   fonts/                     The brand font, subset (OFL)
-  proxy.ts                   Content Security Policy with nonces; 404s, redirects and the °F cookie
+  proxy.ts                   Content Security Policy with nonces; 404s, redirects, rate limits and the °F cookie
+public/                      Offline page and its service worker
 scripts/                     Builds climate data and the map outline; checks coordinates against a geocoder
 e2e/                         Playwright tests
 ```

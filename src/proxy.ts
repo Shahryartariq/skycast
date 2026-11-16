@@ -1,9 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { measurementId } from "@/lib/analytics";
-import { FORMER_CITIES, cityBySlug, cityPath, findCity, provinceBySlug } from "@/lib/cities";
+import { FORMER_CITIES, cityBySlug, cityNear, cityPath, findCity, provinceBySlug } from "@/lib/cities";
 import { buildCsp } from "@/lib/csp";
+import { parseLocation } from "@/lib/query";
+import { createLimiter, lookupsPerMinute } from "@/lib/rate-limit";
 import { UNITS_COOKIE, UNITS_MAX_AGE } from "@/lib/units";
+import { clientIp } from "@/lib/visitor";
+
+/** Searches and coordinates that go to OpenWeather. City pages are cached and don't count. */
+const lookups = createLimiter({ limit: () => lookupsPerMinute(30) });
+
+const TOO_MANY = `<!doctype html>
+<html lang="en-PK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Too many searches · Skycast</title>
+<link rel="stylesheet" href="/fallback.css">
+</head>
+<body>
+<main>
+<h1>Too many searches</h1>
+<p>Skycast limits how quickly one connection can look up places, so the weather service stays available for everyone. Wait a minute, then try again.</p>
+<p><a class="button" href="/">All Pakistan weather</a></p>
+</main>
+</body>
+</html>
+`;
 
 /**
  * A fresh nonce per request for a strict Content Security Policy: only scripts and
@@ -49,13 +74,40 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL("/_unknown-city", request.url));
   }
 
-  // A search for a city we cover goes to its page, so links stay clean and shareable.
-  const search = pathname === "/" ? searchParams.get("q") : null;
-  const match = search ? findCity(search) : undefined;
+  // A search for a city we cover, or coordinates within its reach, go to its page, so links stay
+  // clean and shareable and nobody gets a bare forecast where a full city page exists.
+  const location =
+    pathname === "/"
+      ? parseLocation({
+          lat: searchParams.get("lat") ?? undefined,
+          lon: searchParams.get("lon") ?? undefined,
+          q: searchParams.get("q") ?? undefined,
+        })
+      : null;
+  const match =
+    location?.kind === "coords"
+      ? cityNear(location.lat, location.lon)
+      : location?.kind === "search"
+        ? findCity(location.q)
+        : undefined;
   if (match) {
     const target = new URL(cityPath(match), request.url);
     if (searchParams.get("units") === "imperial") target.searchParams.set("units", "imperial");
     return NextResponse.redirect(target);
+  }
+
+  if (location?.kind === "coords" || location?.kind === "search") {
+    const verdict = lookups.check(clientIp(request.headers) ?? "unknown");
+    if (!verdict.ok) {
+      return new NextResponse(TOO_MANY, {
+        status: 429,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Retry-After": String(verdict.retryAfter),
+        },
+      });
+    }
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");

@@ -18,6 +18,8 @@ export function buildCsp({ nonce, dev, analytics }: { nonce: string; dev: boolea
     ["img-src 'self' data: blob:", ...(analytics ? GA_CONNECT : [])].join(" "),
     "font-src 'self'",
     ["connect-src 'self'", ...(analytics ? GA_CONNECT : [])].join(" "),
+    // The offline service worker. Spelled out: with 'strict-dynamic', script-src ignores 'self'.
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -185,7 +185,8 @@ function normalise(query: string): string {
   return query
     .trim()
     .toLowerCase()
-    .replace(/,\s*(pk|pakistan)$/, "")
+    // "Lahore, PK", "lahore pakistan": the country adds nothing, we only list Pakistan.
+    .replace(/(,\s*|\s+)(pk|pakistan)$/, "")
     .replace(/[.\s-]+/g, " ")
     .trim();
 }
