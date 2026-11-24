@@ -392,7 +392,7 @@ test.describe("weather", () => {
   test("has no horizontal scrolling on small screens", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.setExtraHTTPHeaders(VERCEL_ISLAMABAD);
-    for (const path of ["/", "/weather/dera-ismail-khan", "/pakistan/khyber-pakhtunkhwa", "/air-quality", "/about", "/my-location", "/weather/nowhere"]) {
+    for (const path of ["/", "/weather/dera-ismail-khan", "/pakistan/khyber-pakhtunkhwa", "/air-quality", "/compare", "/compare/murree-vs-nathia-gali", "/about", "/my-location", "/weather/nowhere"]) {
       await page.goto(path);
       expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(320);
     }
@@ -449,6 +449,64 @@ test.describe("rain map", () => {
     expect((await request.get("/api/map/rain/7/90/52")).status()).toBe(200);
     expect((await request.get("/api/map/rain/7/113/50")).status()).toBe(404);
     expect((await request.get("/api/map/wind/7/90/52")).status()).toBe(404);
+  });
+});
+
+test.describe("compare", () => {
+  test("shows two cities side by side", async ({ page }) => {
+    await page.goto("/compare/lahore-vs-islamabad");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Lahore vs Islamabad weather");
+    await expect(page).toHaveTitle(/^Lahore vs Islamabad Weather Today/);
+    const today = page.getByRole("region", { name: "Lahore and Islamabad today" });
+    await expect(today.getByRole("columnheader", { name: "Lahore" })).toBeVisible();
+    await expect(today.getByRole("columnheader", { name: "Islamabad" })).toBeVisible();
+    await expect(today.getByRole("rowheader", { name: "Air quality (US AQI)" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Next five days" }).getByRole("row")).toHaveCount(6);
+    await expect(page.getByRole("region", { name: "Average weather by month" }).getByRole("row")).toHaveCount(13);
+    await expect(page.getByRole("link", { name: "Lahore", exact: true })).toHaveAttribute("href", "/weather/lahore");
+    const regions = page.getByRole("navigation", { name: "Regions of Pakistan" });
+    await expect(regions.getByRole("link", { name: "Compare" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("the picker opens the pair's page, bigger city first", async ({ page }) => {
+    await page.goto("/compare");
+    await page.getByLabel("First city").selectOption("murree");
+    await page.getByLabel("Second city").selectOption("karachi");
+    await page.getByRole("button", { name: "Compare" }).click();
+    await expect(page).toHaveURL(/\/compare\/karachi-vs-murree$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Karachi vs Murree weather");
+  });
+
+  test("works without JavaScript", async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto("/compare");
+    await page.getByLabel("Second city").selectOption("peshawar");
+    await page.getByRole("button", { name: "Compare" }).click();
+    await expect(page).toHaveURL(/\/compare\/lahore-vs-peshawar$/);
+    await context.close();
+  });
+
+  test("one address per pair, and a real 404 for unknown cities", async ({ request }) => {
+    const swapped = await request.get("/compare/islamabad-vs-lahore", { maxRedirects: 0 });
+    expect(swapped.status()).toBe(308);
+    expect(swapped.headers().location).toBe("/compare/lahore-vs-islamabad");
+    const same = await request.get("/compare?a=lahore&b=lahore", { maxRedirects: 0 });
+    expect(same.headers().location).toBe("/weather/lahore");
+    const fahrenheit = await request.get("/compare?a=karachi&b=lahore&units=imperial", { maxRedirects: 0 });
+    expect(fahrenheit.headers().location).toBe("/compare/karachi-vs-lahore?units=imperial");
+    expect((await request.get("/compare/lahore-vs-atlantis")).status()).toBe(404);
+    expect((await request.get("/compare/lahore")).status()).toBe(404);
+  });
+
+  test("city pages link to comparisons, and popular pairs are in the sitemap", async ({ page, request }) => {
+    await page.goto("/weather/sargodha");
+    await expect(page.getByRole("link", { name: "Lahore", exact: true }).last()).toHaveAttribute(
+      "href",
+      "/compare/lahore-vs-sargodha",
+    );
+    const sitemap = await (await request.get("/sitemap.xml")).text();
+    expect(sitemap).toContain("/compare/lahore-vs-islamabad</loc>");
   });
 });
 
@@ -569,7 +627,7 @@ test.describe("theme", () => {
   });
 
   for (const scheme of ["light", "dark"] as const) {
-    for (const path of ["/", "/weather/lahore", "/weather/gilgit", "/pakistan/punjab", "/air-quality", "/about", "/weather/nowhere"]) {
+    for (const path of ["/", "/weather/lahore", "/weather/gilgit", "/pakistan/punjab", "/air-quality", "/compare", "/compare/lahore-vs-islamabad", "/about", "/weather/nowhere"]) {
       test(`no serious WCAG 2.1 AA issues in ${scheme} on ${path}`, async ({ page }) => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.goto(path);
@@ -703,7 +761,9 @@ test.describe("SEO", () => {
     expect(sitemap).toContain("/pakistan/balochistan</loc>");
     expect(sitemap).toContain("/air-quality</loc>");
     expect(sitemap).toContain("/my-location</loc>");
-    expect(sitemap.match(/<loc>/g)?.length).toBe(60);
+    expect(sitemap).toContain("/compare</loc>");
+    // Home, air quality, compare, my location, about, 6 provinces, 50 cities and 16 popular pairs.
+    expect(sitemap.match(/<loc>/g)?.length).toBe(77);
 
     const robots = await (await request.get("/robots.txt")).text();
     expect(robots).toContain("Disallow: /api/");
