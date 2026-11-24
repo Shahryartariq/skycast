@@ -1921,6 +1921,364 @@ a.icon-button {
 }
 
 /* ---------------------------------------------------------------------------------------------
+   Compare two cities (/compare)
+   --------------------------------------------------------------------------------------------- */
+
+.compare-hero {
+  max-width: 820px;
+}
+
+/* The two cities now, side by side on the sky. */
+.duel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 820px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duel-card {
+  display: grid;
+  gap: 4px;
+  padding: 20px 22px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 9%);
+}
+
+.duel-name {
+  font-size: 1.2rem;
+  font-weight: 650;
+  text-underline-offset: 0.2em;
+  text-decoration-color: rgb(255 255 255 / 40%);
+}
+
+.duel-name:hover {
+  text-decoration-color: #fff;
+}
+
+.duel-region,
+.duel-condition {
+  color: rgb(255 255 255 / 82%);
+  font-size: 0.92rem;
+}
+
+.duel-reading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.duel-temp {
+  font-size: clamp(2.4rem, 1.9rem + 2vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-table td {
+  width: 36%;
+}
+
+.compare-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* City picker: two drop-downs and a button. */
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.picker-field {
+  display: grid;
+  gap: 6px;
+  min-width: 200px;
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+
+.picker-field select {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.section .picker .button {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.pair-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pair-grid a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  height: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.pair-grid a:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.pair-name {
+  font-weight: 600;
+}
+
+.pair-temps {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.compare-links {
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.compare-links a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .duel {
+    gap: 10px;
+  }
+
+  .duel-card {
+    padding: 16px;
+  }
+
+  .picker-field {
+    flex: 1 1 100%;
+  }
+
+  .picker .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Three narrow columns fit a phone: labels wrap, numbers stay on one line. */
+  .compare-table th,
+  .compare-table td {
+    padding: 10px 10px;
+  }
+
+  .compare-table tbody th {
+    white-space: normal;
+    min-width: 7.5em;
+  }
+
+  .compare-table td {
+    width: auto;
+  }
+
+  .compare-table .aqi-band {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Rain and cloud map (RainMap)
+   --------------------------------------------------------------------------------------------- */
+
+.rain-map {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.map-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.map-layers,
+.map-zoom {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.map-layers button,
+.map-zoom button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.map-zoom button {
+  padding: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.map-layers button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.map-layers button:hover:not([aria-pressed="true"]),
+.map-zoom button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.map-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.map-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #e9edf1;
+}
+
+/* A quieter street map, so the weather on top stands out. */
+.map-base {
+  filter: saturate(0.45) brightness(1.04);
+}
+
+/* Clouds are white on a white map: grey them so they show. */
+.map-clouds {
+  filter: brightness(0.6);
+  opacity: 0.85;
+}
+
+.map-pin {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.map-pin-halo {
+  fill: var(--accent);
+  opacity: 0.22;
+}
+
+.map-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.map-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-scale {
+  display: inline-block;
+  width: 84px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.map-legend-rain .map-scale {
+  background: linear-gradient(90deg, rgb(110 110 205 / 35%), rgb(80 80 225 / 75%), rgb(20 20 255 / 95%));
+}
+
+.map-legend-clouds .map-scale {
+  background: linear-gradient(90deg, rgb(120 130 140 / 10%), rgb(120 130 140 / 90%));
+}
+
+.map-credit a {
+  color: inherit;
+}
+
+/* Dark themes: the light street map, inverted, instead of a second set of tiles. */
+:root[data-theme="dark"] .map-base {
+  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.9) contrast(0.85);
+}
+
+:root[data-theme="dark"] .map-frame svg {
+  background: #1d232b;
+}
+
+:root[data-theme="dark"] .map-clouds {
+  filter: none;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-base {
+    filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.9) contrast(0.85);
+  }
+
+  :root:not([data-theme="light"]) .map-frame svg {
+    background: #1d232b;
+  }
+
+  :root:not([data-theme="light"]) .map-clouds {
+    filter: none;
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 640px) {
+  .map-frame svg {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
    Air quality history (/air-quality/[city])
    --------------------------------------------------------------------------------------------- */
 

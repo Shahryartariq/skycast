@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { City } from "@/lib/cities";
+import { MAJOR, cityBySlug } from "@/lib/cities";
 import { provinceBySlug, provincePath } from "@/lib/cities";
 import { CLIMATE_PERIOD, MONTHS, climateOf, describeMonths, hasRainData, summarise, type Climate } from "@/lib/climate";
 import { formatRain, formatTemp, formatTempUnit, tempColor } from "@/lib/format";
@@ -9,6 +10,7 @@ import type { CityNow } from "@/lib/load";
 import type { Units } from "@/lib/types";
 
 import { CityCards } from "./Cities";
+import { CompareLinks } from "./Compare";
 
 /** One row's temperature range on a scale shared by the whole year. */
 function RangeBar({ low, high, floor, span }: { low: number; high: number; floor: number; span: number }) {
@@ -84,6 +86,10 @@ export function CityGuide({
   const summary = climate && summarise(climate, showRain);
   const province = city.province && provinceBySlug(city.province);
   const suffix = units === "imperial" ? "?units=imperial" : "";
+  // Two neighbours, then the biggest cities: the comparisons people actually make.
+  const compareWith = [...nearby.slice(0, 2), ...MAJOR.map((slug) => cityBySlug(slug)!)]
+    .filter((other, i, all) => other.slug !== city.slug && all.findIndex((o) => o.slug === other.slug) === i)
+    .slice(0, 5);
 
   return (
     <>
@@ -139,6 +145,7 @@ export function CityGuide({
             <Link prefetch={false} href={`${provincePath(province)}${suffix}`}>All {province.name} weather</Link>
           </p>
         )}
+        <CompareLinks city={city} others={compareWith} units={units} />
       </section>
     </>
   );

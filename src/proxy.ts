@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { measurementId } from "@/lib/analytics";
 import { FORMER_CITIES, cityBySlug, cityNear, cityPath, findCity, provinceBySlug } from "@/lib/cities";
+import { COMPARE_PATH, parsePair } from "@/lib/compare";
 import { buildCsp } from "@/lib/csp";
 import { parseLocation } from "@/lib/query";
 import { createLimiter, lookupsPerMinute } from "@/lib/rate-limit";
@@ -39,7 +40,7 @@ export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Typed or old links with capitals ("/weather/Lahore") go to the real page.
-  if (/^\/(weather|pakistan|air-quality)\//i.test(pathname) && pathname !== pathname.toLowerCase()) {
+  if (/^\/(weather|pakistan|compare|air-quality)\//i.test(pathname) && pathname !== pathname.toLowerCase()) {
     const target = request.nextUrl.clone();
     target.pathname = pathname.toLowerCase();
     return NextResponse.redirect(target, 308);
@@ -66,6 +67,27 @@ export function proxy(request: NextRequest) {
     const target = new URL("/", request.url);
     target.searchParams.set("q", former);
     return NextResponse.redirect(target, 308);
+  }
+
+  // Compare pages: the picker form and the other order go to the pair's one address.
+  const comparePair = /^\/compare\/([^/]+)\/?$/.exec(pathname);
+  const picked =
+    pathname === COMPARE_PATH && searchParams.has("a") && searchParams.has("b")
+      ? `${searchParams.get("a")}-vs-${searchParams.get("b")}`
+      : null;
+  const pair = picked ?? (comparePair ? comparePair[1] : null);
+  if (pair !== null) {
+    const lookup = parsePair(pair);
+    const keepUnits = (target: URL) => {
+      if (searchParams.get("units") === "imperial") target.searchParams.set("units", "imperial");
+      return target;
+    };
+    if (lookup.kind === "redirect") return NextResponse.redirect(keepUnits(new URL(lookup.path, request.url)), picked ? 307 : 308);
+    if (lookup.kind === "same") return NextResponse.redirect(keepUnits(new URL(cityPath(lookup.city), request.url)), 307);
+    if (lookup.kind === "ok" && picked) {
+      return NextResponse.redirect(keepUnits(new URL(`${COMPARE_PATH}/${pair}`, request.url)), 307);
+    }
+    if (lookup.kind === "unknown") return NextResponse.rewrite(new URL("/_unknown-city", request.url));
   }
 
   if (

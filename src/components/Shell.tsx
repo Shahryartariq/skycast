@@ -35,7 +35,7 @@ export function Shell({
   children,
 }: {
   sky: Sky;
-  /** The region link to mark as current: a province slug, or "air-quality". */
+  /** The region link to mark as current: a province slug, "air-quality" or "compare". */
   region?: string;
   units?: Units;
   /** Path the °C/°F links point at. Pages without temperatures leave it out. */
@@ -81,6 +81,11 @@ export function Shell({
           <li>
             <Link prefetch={false} href="/air-quality" aria-current={region === "air-quality" ? "page" : undefined}>
               Air quality
+            </Link>
+          </li>
+          <li>
+            <Link prefetch={false} href={`/compare${suffix}`} aria-current={region === "compare" ? "page" : undefined}>
+              Compare
             </Link>
           </li>
         </ul>

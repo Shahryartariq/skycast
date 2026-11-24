@@ -167,6 +167,33 @@ export function simplePageSchema(path: string, name: string, description: string
   };
 }
 
+export function compareTrail(a: City, b: City, path: string) {
+  return [
+    { name: "Pakistan", path: "/" },
+    { name: "Compare", path: "/compare" },
+    { name: `${a.name} vs ${b.name}`, path },
+  ];
+}
+
+const cityThing = (city: City) => ({
+  "@type": "City",
+  name: city.name,
+  alternateName: city.nameUr,
+  geo: { "@type": "GeoCoordinates", latitude: city.lat, longitude: city.lon },
+  containedInPlace: PAKISTAN,
+});
+
+export function compareSchema(a: City, b: City, path: string, description: string) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      website(),
+      { ...webPage(path, `${a.name} vs ${b.name} weather`, description, cityThing(a)), mentions: cityThing(b) },
+      breadcrumbs(compareTrail(a, b, path)),
+    ],
+  };
+}
+
 export const airHistoryPath = (city: Pick<City, "slug">) => `/air-quality/${city.slug}`;
 
 export function airHistoryTrail(city: City) {

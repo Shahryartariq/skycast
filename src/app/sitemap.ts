@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { CITIES, PROVINCES, cityPath, provincePath } from "@/lib/cities";
+import { comparePath, popularPairs } from "@/lib/compare";
 import { airHistoryPath } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
@@ -11,11 +12,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const paths = [
     "/",
     "/air-quality",
+    "/compare",
     "/my-location",
     "/about",
     ...PROVINCES.map(provincePath),
     ...CITIES.map(cityPath),
     ...CITIES.map(airHistoryPath),
+    ...popularPairs().map(([a, b]) => comparePath(a, b)),
   ];
   return paths.map((path) => ({ url: new URL(path, base).toString(), lastModified }));
 }
