@@ -193,3 +193,30 @@ export function compareSchema(a: City, b: City, path: string, description: strin
     ],
   };
 }
+
+export const airHistoryPath = (city: Pick<City, "slug">) => `/air-quality/${city.slug}`;
+
+export function airHistoryTrail(city: City) {
+  return [
+    { name: "Pakistan", path: "/" },
+    { name: "Air quality", path: "/air-quality" },
+    { name: city.name, path: airHistoryPath(city) },
+  ];
+}
+
+export function airHistorySchema(city: City, description: string) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      website(),
+      webPage(airHistoryPath(city), `${city.name} air quality history`, description, {
+        "@type": "City",
+        name: city.name,
+        alternateName: city.nameUr,
+        geo: { "@type": "GeoCoordinates", latitude: city.lat, longitude: city.lon },
+        containedInPlace: PAKISTAN,
+      }),
+      breadcrumbs(airHistoryTrail(city)),
+    ],
+  };
+}

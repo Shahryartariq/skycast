@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { cityNear } from "@/lib/cities";
 import {
   aqiBand,
   compass,
@@ -10,6 +11,7 @@ import {
   formatWind,
   usAqi,
 } from "@/lib/format";
+import { airHistoryPath } from "@/lib/seo";
 import { formatClock } from "@/lib/time";
 import type { Snapshot, Units } from "@/lib/types";
 
@@ -73,6 +75,8 @@ export function Details({ snapshot, units }: { snapshot: Snapshot; units: Units 
   const daylightMinutes = Math.round((current.sunset - current.sunrise) / 60);
   const aqi = air && usAqi(air.pm25);
   const band = aqi === undefined ? undefined : aqiBand(aqi);
+  // Listed cities have a saved history of their air.
+  const listed = cityNear(snapshot.place.lat, snapshot.place.lon);
   const feelsNote = feelsLikeNote(current.temp, current.feelsLike);
   const visNote = visibilityNote(current.visibility);
 
@@ -111,6 +115,12 @@ export function Details({ snapshot, units }: { snapshot: Snapshot; units: Units 
               </dd>
               <dd className="detail-note">
                 {band.label}, PM2.5 {Math.round(air.pm25)} µg/m³.{" "}
+                {listed && (
+                  <>
+                    <Link prefetch={false} href={airHistoryPath(listed)}>Last 30 days</Link>
+                    {" · "}
+                  </>
+                )}
                 <Link prefetch={false} href="/air-quality">All cities</Link>
               </dd>
             </>

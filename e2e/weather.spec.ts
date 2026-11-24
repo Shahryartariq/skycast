@@ -392,7 +392,7 @@ test.describe("weather", () => {
   test("has no horizontal scrolling on small screens", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.setExtraHTTPHeaders(VERCEL_ISLAMABAD);
-    for (const path of ["/", "/weather/dera-ismail-khan", "/pakistan/khyber-pakhtunkhwa", "/air-quality", "/compare", "/compare/murree-vs-nathia-gali", "/about", "/my-location", "/weather/nowhere"]) {
+    for (const path of ["/", "/weather/dera-ismail-khan", "/pakistan/khyber-pakhtunkhwa", "/air-quality", "/compare", "/compare/murree-vs-nathia-gali", "/air-quality/rahim-yar-khan", "/about", "/my-location", "/weather/nowhere"]) {
       await page.goto(path);
       expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(320);
     }
@@ -406,6 +406,46 @@ test.describe("weather", () => {
     await expect(skip).toBeFocused();
     await skip.press("Enter");
     await expect(page).toHaveURL(/#main$/);
+  });
+});
+
+test.describe("air quality history", () => {
+  test("a city's last 30 days: summary, daily chart, hourly chart and the numbers", async ({ page }) => {
+    await page.goto("/air-quality/lahore");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Lahore air quality, last 30 days");
+    await expect(page).toHaveTitle(/^Lahore AQI History/);
+    await expect(page.getByText(/^Lahore's air averaged AQI \d+/)).toBeVisible();
+    await expect(page.getByRole("img", { name: "Daily average AQI in Lahore for the last 30 days" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Hourly AQI in Lahore for the last 7 days" })).toBeVisible();
+    await page.getByText("Show the numbers").click();
+    const table = page.getByRole("region", { name: "Daily average air quality" });
+    await expect(table.getByRole("row")).toHaveCount(31);
+    // The sample data has two days with too few readings, shown as gaps rather than guesses.
+    await expect(table.getByRole("cell", { name: "Not enough readings" })).toHaveCount(2);
+    const regions = page.getByRole("navigation", { name: "Regions of Pakistan" });
+    await expect(regions.getByRole("link", { name: "Air quality" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("the ranking and city pages link to each city's history", async ({ page }) => {
+    await page.goto("/air-quality");
+    await expect(page.getByRole("columnheader", { name: "Last 30 days" })).toBeAttached();
+    await page.getByRole("link", { name: "Karachi air quality, last 30 days" }).click();
+    await expect(page).toHaveURL(/\/air-quality\/karachi$/);
+    await page.goto("/weather/multan");
+    await expect(page.getByRole("link", { name: "Last 30 days" })).toHaveAttribute("href", "/air-quality/multan");
+  });
+
+  test("unknown cities get a real 404, and capitals redirect", async ({ request }) => {
+    expect((await request.get("/air-quality/atlantis")).status()).toBe(404);
+    const capital = await request.get("/air-quality/Lahore", { maxRedirects: 0 });
+    expect(capital.status()).toBe(308);
+    expect(capital.headers().location).toBe("/air-quality/lahore");
+  });
+
+  test("the hourly collector refuses anyone without GitHub's signed token", async ({ request }) => {
+    const response = await request.post("/api/cron/air");
+    expect(response.status()).toBe(401);
+    expect((await request.post("/api/cron/air", { headers: { authorization: "Bearer forged" } })).status()).toBe(401);
   });
 });
 
@@ -627,7 +667,7 @@ test.describe("theme", () => {
   });
 
   for (const scheme of ["light", "dark"] as const) {
-    for (const path of ["/", "/weather/lahore", "/weather/gilgit", "/pakistan/punjab", "/air-quality", "/compare", "/compare/lahore-vs-islamabad", "/about", "/weather/nowhere"]) {
+    for (const path of ["/", "/weather/lahore", "/weather/gilgit", "/pakistan/punjab", "/air-quality", "/compare", "/compare/lahore-vs-islamabad", "/air-quality/lahore", "/about", "/weather/nowhere"]) {
       test(`no serious WCAG 2.1 AA issues in ${scheme} on ${path}`, async ({ page }) => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.goto(path);
@@ -762,8 +802,10 @@ test.describe("SEO", () => {
     expect(sitemap).toContain("/air-quality</loc>");
     expect(sitemap).toContain("/my-location</loc>");
     expect(sitemap).toContain("/compare</loc>");
-    // Home, air quality, compare, my location, about, 6 provinces, 50 cities and 16 popular pairs.
-    expect(sitemap.match(/<loc>/g)?.length).toBe(77);
+    expect(sitemap).toContain("/air-quality/lahore</loc>");
+    // Home, air quality, compare, my location, about, 6 provinces, 50 cities with a weather and an air history
+    // page each, and 16 popular pairs.
+    expect(sitemap.match(/<loc>/g)?.length).toBe(127);
 
     const robots = await (await request.get("/robots.txt")).text();
     expect(robots).toContain("Disallow: /api/");

@@ -1,0 +1,43 @@
+name: Collect air quality
+
+# Once an hour, ask Skycast to save every city's air quality. The site checks a GitHub-signed
+# OIDC token (no shared secret) and fills any gap from missed runs, so a late or skipped run
+# heals itself on the next one. Minute 17 avoids the busy top of the hour.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # Lets this job ask GitHub for the signed token. Nothing else.
+
+concurrency:
+  group: air-history
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Save this hour's readings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Get a signed token for Skycast
+        id: token
+        run: |
+          token=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=skycast-air-collector" | jq -r .value)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Collect
+        env:
+          TOKEN: ${{ steps.token.outputs.token }}
+          SITE: https://getskycast.vercel.app
+        run: |
+          status=$(curl -sS -o result.json -w '%{http_code}' --max-time 90 --retry 2 --retry-all-errors \
+            -X POST -H "Authorization: Bearer $TOKEN" "$SITE/api/cron/air")
+          jq . result.json || cat result.json
+          echo "### Air quality collection: HTTP $status" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '"Saved \(.saved) readings for \(.cities) cities. Backfilled: \(.backfilled | length). Failed: \(.failed | join(", "))."' result.json >> "$GITHUB_STEP_SUMMARY" || true
+          test "$status" = 200

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { CITIES, PROVINCES, cityPath, provincePath } from "@/lib/cities";
 import { comparePath, popularPairs } from "@/lib/compare";
+import { airHistoryPath } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
 /** Every indexable page. Live weather means their content really does change all the time. */
@@ -16,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/about",
     ...PROVINCES.map(provincePath),
     ...CITIES.map(cityPath),
+    ...CITIES.map(airHistoryPath),
     ...popularPairs().map(([a, b]) => comparePath(a, b)),
   ];
   return paths.map((path) => ({ url: new URL(path, base).toString(), lastModified }));

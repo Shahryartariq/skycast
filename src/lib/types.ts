@@ -124,7 +124,7 @@ export interface OWForecast {
 }
 
 export interface OWAir {
-  list: { main: { aqi: number }; components: { pm2_5: number; pm10: number } }[];
+  list: { dt: number; main: { aqi: number }; components: { pm2_5: number; pm10: number } }[];
 }
 
 export interface OWGeoResult {
