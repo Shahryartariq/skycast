@@ -58,6 +58,9 @@ const cachedHours = unstable_cache(async (slug: string) => recentHours(db(), slu
   tags: [AIR_HISTORY_TAG],
 });
 
+const isMissingTable = (error: unknown) =>
+  typeof error === "object" && error !== null && "code" in error && error.code === "42P01";
+
 /** Daily average PM2.5 for every city over the last 30 days. */
 export async function loadAirHistory(): Promise<AirHistory> {
   if (!hasDatabase()) {
@@ -67,6 +70,8 @@ export async function loadAirHistory(): Promise<AirHistory> {
   try {
     return { kind: "ok", sample: false, byCity: await cachedHistory() };
   } catch (error) {
+    // A new database before the collector's first run: nothing saved yet, which isn't an error.
+    if (isMissingTable(error)) return { kind: "ok", sample: false, byCity: {} };
     console.error("Air history unavailable:", error instanceof Error ? error.message : error);
     return { kind: "unavailable" };
   }
