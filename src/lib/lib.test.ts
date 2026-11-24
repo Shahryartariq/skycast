@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { cityBySlug } from "./cities";
+import { POPULAR_PAIRS, comparePath, parsePair, popularPairs, warmer } from "./compare";
 import { conditionFromCode, conditionLabel, skyFor } from "./conditions";
 import sample from "./fixtures/sample.json";
 import { compass, dewPoint, formatPressure, formatTemp, formatVisibility, formatWind } from "./format";
@@ -422,5 +424,40 @@ describe("analytics and security policy", async () => {
     expect(on).toContain("frame-ancestors 'none'");
     expect(on).not.toContain("unsafe-inline");
     expect(buildCsp({ nonce: "abc", dev: true, analytics: false })).toContain("'unsafe-eval'");
+  });
+});
+
+describe("compare", () => {
+  it("names the bigger city first, one address per pair", () => {
+    const lahore = cityBySlug("lahore")!;
+    const islamabad = cityBySlug("islamabad")!;
+    const murree = cityBySlug("murree")!;
+    expect(comparePath(islamabad, lahore)).toBe("/compare/lahore-vs-islamabad");
+    expect(comparePath(lahore, islamabad)).toBe("/compare/lahore-vs-islamabad");
+    expect(comparePath(murree, lahore)).toBe("/compare/lahore-vs-murree");
+  });
+
+  it("reads pair addresses", () => {
+    expect(parsePair("lahore-vs-islamabad")).toMatchObject({ kind: "ok" });
+    expect(parsePair("islamabad-vs-lahore")).toEqual({ kind: "redirect", path: "/compare/lahore-vs-islamabad" });
+    expect(parsePair("murree-vs-nathia-gali")).toMatchObject({ kind: "ok" });
+    expect(parsePair("lahore-vs-lahore")).toMatchObject({ kind: "same" });
+    for (const bad of ["lahore", "lahore-vs-", "lahore-vs-atlantis", "a-vs-b-vs-c", "%E0-vs-lahore"]) {
+      expect(parsePair(bad), bad).toEqual({ kind: "unknown" });
+    }
+  });
+
+  it("every popular pair is a real, distinct pair", () => {
+    const pairs = popularPairs();
+    expect(pairs).toHaveLength(POPULAR_PAIRS.length);
+    const paths = pairs.map(([a, b]) => comparePath(a, b));
+    expect(new Set(paths).size).toBe(paths.length);
+    for (const path of paths) expect(parsePair(path.replace("/compare/", ""))).toMatchObject({ kind: "ok" });
+  });
+
+  it("calls small differences the same", () => {
+    expect(warmer(0.4)).toBe("same");
+    expect(warmer(3)).toBe("warmer");
+    expect(warmer(-2)).toBe("cooler");
   });
 });
