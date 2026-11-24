@@ -1921,6 +1921,168 @@ a.icon-button {
 }
 
 /* ---------------------------------------------------------------------------------------------
+   Rain and cloud map (RainMap)
+   --------------------------------------------------------------------------------------------- */
+
+.rain-map {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.map-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.map-layers,
+.map-zoom {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.map-layers button,
+.map-zoom button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.map-zoom button {
+  padding: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.map-layers button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.map-layers button:hover:not([aria-pressed="true"]),
+.map-zoom button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.map-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.map-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #e9edf1;
+}
+
+/* Clouds are white on a white map: grey them so they show. */
+.map-clouds {
+  filter: brightness(0.6);
+  opacity: 0.85;
+}
+
+.map-pin {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.map-pin-halo {
+  fill: var(--accent);
+  opacity: 0.22;
+}
+
+.map-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.map-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-scale {
+  display: inline-block;
+  width: 84px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.map-legend-rain .map-scale {
+  background: linear-gradient(90deg, rgb(110 110 205 / 35%), rgb(80 80 225 / 75%), rgb(20 20 255 / 95%));
+}
+
+.map-legend-clouds .map-scale {
+  background: linear-gradient(90deg, rgb(120 130 140 / 10%), rgb(120 130 140 / 90%));
+}
+
+.map-credit a {
+  color: inherit;
+}
+
+/* Dark themes: the light street map, inverted, instead of a second set of tiles. */
+:root[data-theme="dark"] .map-base {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.85);
+}
+
+:root[data-theme="dark"] .map-frame svg {
+  background: #1d232b;
+}
+
+:root[data-theme="dark"] .map-clouds {
+  filter: none;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-base {
+    filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.85);
+  }
+
+  :root:not([data-theme="light"]) .map-frame svg {
+    background: #1d232b;
+  }
+
+  :root:not([data-theme="light"]) .map-clouds {
+    filter: none;
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 640px) {
+  .map-frame svg {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
    Weather in the background (SkyEffects). Decorative, behind the content, transform and opacity
    only. Per-piece values below are fixed, generated once; the CSP blocks inline styles.
    --------------------------------------------------------------------------------------------- */

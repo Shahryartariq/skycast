@@ -1,3 +1,6 @@
+/** The street map under the weather map (CARTO's OpenStreetMap tiles). */
+const MAP_TILES = "https://*.basemaps.cartocdn.com";
+
 /** Hosts Google Analytics 4 loads its script from and sends measurements to. */
 const GA_SCRIPT = ["https://www.googletagmanager.com"];
 const GA_CONNECT = [
@@ -15,7 +18,7 @@ export function buildCsp({ nonce, dev, analytics }: { nonce: string; dev: boolea
     "default-src 'self'",
     ["script-src 'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(analytics ? GA_SCRIPT : []), ...(dev ? ["'unsafe-eval'"] : [])].join(" "),
     `style-src 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
-    ["img-src 'self' data: blob:", ...(analytics ? GA_CONNECT : [])].join(" "),
+    ["img-src 'self' data: blob:", MAP_TILES, ...(analytics ? GA_CONNECT : [])].join(" "),
     "font-src 'self'",
     ["connect-src 'self'", ...(analytics ? GA_CONNECT : [])].join(" "),
     // The offline service worker. Spelled out: with 'strict-dynamic', script-src ignores 'self'.

@@ -3,7 +3,16 @@ import { expect, test, type Page } from "@playwright/test";
 
 const problems: string[] = [];
 
+/** A transparent 1×1 PNG, standing in for the street map's tiles so tests don't need CARTO. */
+const EMPTY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
 test.beforeEach(async ({ page }) => {
+  await page.route("https://*.basemaps.cartocdn.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: EMPTY_PNG }),
+  );
   problems.length = 0;
   page.on("pageerror", (error) => problems.push(error.message));
   // Script errors and Content Security Policy violations are logged as console errors.
@@ -397,6 +406,49 @@ test.describe("weather", () => {
     await expect(skip).toBeFocused();
     await skip.press("Enter");
     await expect(page).toHaveURL(/#main$/);
+  });
+});
+
+test.describe("rain map", () => {
+  test("loads only when scrolled to, and switches layer and zoom", async ({ page }) => {
+    const tiles: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/map/")) tiles.push(new URL(request.url()).pathname);
+    });
+    await page.goto("/weather/lahore");
+    const map = page.getByRole("img", { name: "Rain map around Lahore" });
+    await expect(map).toBeAttached();
+    expect(tiles, "no tiles before the map is near the screen").toEqual([]);
+
+    await map.scrollIntoViewIfNeeded();
+    await expect(map.locator(".map-weather image").first()).toBeAttached();
+    await expect.poll(() => tiles.length).toBeGreaterThan(0);
+    expect(tiles.every((path) => /^\/api\/map\/rain\/7\/\d+\/\d+$/.test(path))).toBe(true);
+    // Lahore's own tile at zoom 7.
+    expect(tiles).toContain("/api/map/rain/7/90/52");
+
+    await page.getByRole("button", { name: "Clouds" }).click();
+    await expect(page.getByRole("img", { name: "Clouds map around Lahore" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Clouds" })).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(() => tiles.some((path) => path.startsWith("/api/map/clouds/7/"))).toBe(true);
+
+    await page.getByRole("button", { name: "Zoom in" }).click();
+    await page.getByRole("button", { name: "Zoom in" }).click();
+    await expect(page.getByRole("button", { name: "Zoom in" })).toBeDisabled();
+    await expect.poll(() => tiles.some((path) => path.startsWith("/api/map/clouds/9/"))).toBe(true);
+    await expectAccessible(page);
+  });
+
+  test("only for places in and around Pakistan", async ({ page }) => {
+    await page.goto("/?q=Tokyo");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tokyo");
+    await expect(page.getByRole("heading", { name: /Rain and clouds around/ })).toHaveCount(0);
+  });
+
+  test("the tile route refuses tiles the map doesn't use", async ({ request }) => {
+    expect((await request.get("/api/map/rain/7/90/52")).status()).toBe(200);
+    expect((await request.get("/api/map/rain/7/113/50")).status()).toBe(404);
+    expect((await request.get("/api/map/wind/7/90/52")).status()).toBe(404);
   });
 });
 
