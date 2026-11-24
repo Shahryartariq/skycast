@@ -1993,6 +1993,11 @@ a.icon-button {
   background: #e9edf1;
 }
 
+/* A quieter street map, so the weather on top stands out. */
+.map-base {
+  filter: saturate(0.45) brightness(1.04);
+}
+
 /* Clouds are white on a white map: grey them so they show. */
 .map-clouds {
   filter: brightness(0.6);
@@ -2049,7 +2054,7 @@ a.icon-button {
 
 /* Dark themes: the light street map, inverted, instead of a second set of tiles. */
 :root[data-theme="dark"] .map-base {
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.85);
+  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.9) contrast(0.85);
 }
 
 :root[data-theme="dark"] .map-frame svg {
@@ -2063,7 +2068,7 @@ a.icon-button {
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .map-base {
-    filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.85);
+    filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.9) contrast(0.85);
   }
 
   :root:not([data-theme="light"]) .map-frame svg {

@@ -3,14 +3,14 @@ import { expect, test, type Page } from "@playwright/test";
 
 const problems: string[] = [];
 
-/** A transparent 1×1 PNG, standing in for the street map's tiles so tests don't need CARTO. */
+/** A transparent 1×1 PNG, standing in for the street map's tiles so tests don't need OpenStreetMap. */
 const EMPTY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
   "base64",
 );
 
 test.beforeEach(async ({ page }) => {
-  await page.route("https://*.basemaps.cartocdn.com/**", (route) =>
+  await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ status: 200, contentType: "image/png", body: EMPTY_PNG }),
   );
   problems.length = 0;

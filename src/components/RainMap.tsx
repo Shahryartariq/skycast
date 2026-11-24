@@ -114,11 +114,7 @@ export function RainMap({ lat, lon, name }: { lat: number; lon: number; name: st
           <a href="https://www.openstreetmap.org/copyright" rel="noopener">
             OpenStreetMap
           </a>{" "}
-          contributors, ©{" "}
-          <a href="https://carto.com/attributions" rel="noopener">
-            CARTO
-          </a>
-          . Weather © OpenWeather.
+          contributors. Weather © OpenWeather.
         </span>
       </div>
     </div>

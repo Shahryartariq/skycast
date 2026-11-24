@@ -85,6 +85,8 @@ export const hasMap = (lat: number, lon: number) =>
 /** Our own route for a weather tile; it adds the API key on the server. */
 export const weatherTileUrl = (layer: Layer, zoom: number, x: number, y: number) => `/api/map/${layer}/${zoom}/${x}/${y}`;
 
-/** The street map underneath, from CARTO (OpenStreetMap data). Retina tiles keep labels sharp. */
-export const baseTileUrl = (zoom: number, x: number, y: number) =>
-  `https://${"abcd"[(x + y) % 4]}.basemaps.cartocdn.com/light_all/${zoom}/${x}/${y}@2x.png`;
+/**
+ * The street map underneath: OpenStreetMap's own tiles, free with the credit shown under the map.
+ * Light use only, which a map that loads on scroll is (https://operations.osmfoundation.org/policies/tiles/).
+ */
+export const baseTileUrl = (zoom: number, x: number, y: number) => `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;

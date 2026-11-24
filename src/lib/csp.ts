@@ -1,5 +1,5 @@
-/** The street map under the weather map (CARTO's OpenStreetMap tiles). */
-const MAP_TILES = "https://*.basemaps.cartocdn.com";
+/** The street map under the weather map (OpenStreetMap's tiles). */
+const MAP_TILES = "https://tile.openstreetmap.org";
 
 /** Hosts Google Analytics 4 loads its script from and sends measurements to. */
 const GA_SCRIPT = ["https://www.googletagmanager.com"];
