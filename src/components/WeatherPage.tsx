@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 import { skyFor } from "@/lib/conditions";
 import { effectFor } from "@/lib/effects";
 import type { Outcome } from "@/lib/load";
+import { hasMap } from "@/lib/tiles";
 import type { Units } from "@/lib/types";
 
 import { Details } from "./Details";
 import { Daily, Hourly } from "./Forecast";
 import { Hero } from "./Hero";
+import { RainMap } from "./RainMap";
 import { Shell } from "./Shell";
 import { SkyEffects } from "./SkyEffects";
 
@@ -80,6 +82,17 @@ export function WeatherPage({
           />
           <Details snapshot={outcome.snapshot} units={units} />
         </div>
+      )}
+
+      {outcome.kind === "ok" && hasMap(outcome.snapshot.place.lat, outcome.snapshot.place.lon) && (
+        <section className="section" aria-labelledby="map-title">
+          <h2 id="map-title">Rain and clouds around {outcome.snapshot.place.name}</h2>
+          <RainMap lat={outcome.snapshot.place.lat} lon={outcome.snapshot.place.lon} name={outcome.snapshot.place.name} />
+          <p className="panel-note">
+            Rain and cloud cover right now from OpenWeather&apos;s weather model, refreshed about every 10 minutes. It&apos;s a
+            model estimate, not radar, so small showers can be missed.
+          </p>
+        </section>
       )}
 
       {children}
