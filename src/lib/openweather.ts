@@ -173,6 +173,28 @@ export async function getAir(place: Place): Promise<AirQuality | undefined> {
   return buildAir(await get<OWAir>("/data/2.5/air_pollution", weatherCoords(place), AIR_TTL));
 }
 
+export interface AirSample {
+  /** Unix seconds. */
+  time: number;
+  pm25: number;
+  pm10: number;
+}
+
+const toSamples = (data: OWAir): AirSample[] =>
+  data.list.map((item) => ({ time: item.dt, pm25: item.components.pm2_5, pm10: item.components.pm10 }));
+
+/** The air right now, uncached: for the hourly collector. */
+export async function getAirNow(place: Place): Promise<AirSample[]> {
+  return toSamples(await get<OWAir>("/data/2.5/air_pollution", weatherCoords(place), 0));
+}
+
+/** Hourly air between two times (Unix seconds), to fill gaps in the stored history. */
+export async function getAirHistory(place: Place, start: number, end: number): Promise<AirSample[]> {
+  return toSamples(
+    await get<OWAir>("/data/2.5/air_pollution/history", { ...weatherCoords(place), start: Math.floor(start), end: Math.floor(end) }, 0),
+  );
+}
+
 /** Plausible, stable sample values that differ from city to city. */
 function sampleAir(place: Place): AirQuality {
   const pm25 = Math.round((8 + (Math.abs(place.lat * 37 + place.lon * 11) % 170)) * 10) / 10;

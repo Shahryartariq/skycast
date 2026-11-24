@@ -1921,6 +1921,148 @@ a.icon-button {
 }
 
 /* ---------------------------------------------------------------------------------------------
+   Air quality history (/air-quality/[city])
+   --------------------------------------------------------------------------------------------- */
+
+.air-facts {
+  margin-top: 24px;
+}
+
+.sky .facts span {
+  color: rgb(255 255 255 / 80%);
+}
+
+.aqi-fill-1 { fill: #3ba55d; }
+.aqi-fill-2 { fill: #e9c547; }
+.aqi-fill-3 { fill: #ee9446; }
+.aqi-fill-4 { fill: #d9483b; }
+.aqi-fill-5 { fill: var(--aqi-5); }
+.aqi-fill-6 { fill: var(--aqi-6); }
+
+.air-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 16px 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: visible;
+}
+
+.air-chart text {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-guides line,
+.chart-days line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-days line {
+  stroke-dasharray: 2 4;
+}
+
+.chart-guides .chart-axis {
+  stroke: var(--muted);
+  opacity: 0.5;
+}
+
+.chart-bar:hover {
+  opacity: 0.8;
+}
+
+.chart-gap {
+  fill: var(--line);
+}
+
+.chart-bands rect {
+  opacity: 0.16;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-narrow {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .chart-wide {
+    display: none;
+  }
+
+  .chart-narrow {
+    display: block;
+  }
+
+  .air-chart {
+    padding: 12px 8px 6px;
+  }
+
+  /* The ranking on a phone: rank, city, AQI and the month; PM2.5 is on each city's page. */
+  .aqi-table.has-history th:nth-child(4),
+  .aqi-table.has-history td:nth-child(4),
+  .aqi-table.has-history .aqi-band {
+    display: none;
+  }
+
+  .aqi-table .sparkline {
+    width: 64px;
+    height: 20px;
+  }
+
+  .aqi-table.has-history td:nth-child(3) {
+    min-width: 0;
+  }
+}
+
+.chart-caption {
+  margin: -8px 0 16px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.chart-data {
+  margin-top: 14px;
+}
+
+.chart-data summary {
+  width: fit-content;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chart-data .climate-scroll {
+  max-height: 360px;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.spark-cell {
+  width: 1%;
+}
+
+.aqi-table .spark-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.sparkline {
+  display: block;
+}
+
+/* ---------------------------------------------------------------------------------------------
    Weather in the background (SkyEffects). Decorative, behind the content, transform and opacity
    only. Per-piece values below are fixed, generated once; the CSP blocks inline styles.
    --------------------------------------------------------------------------------------------- */

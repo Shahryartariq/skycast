@@ -138,7 +138,7 @@ describe("forecast", () => {
     expect(buildAir(air)?.index).toBe(3);
     expect(buildAir(null)).toBeUndefined();
     expect(buildAir({ list: [] })).toBeUndefined();
-    expect(buildAir({ list: [{ main: { aqi: 9 }, components: { pm2_5: 1, pm10: 1 } }] })?.index).toBe(5);
+    expect(buildAir({ list: [{ dt: 0, main: { aqi: 9 }, components: { pm2_5: 1, pm10: 1 } }] })?.index).toBe(5);
   });
 
   it("assembles a full snapshot", () => {

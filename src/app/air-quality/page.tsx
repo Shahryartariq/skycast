@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { Sparkline } from "@/components/AirCharts";
 import { Breadcrumbs, Shell } from "@/components/Shell";
+import { loadAirHistory } from "@/lib/air-data";
+import { fillDays, pakistanToday } from "@/lib/air-history";
 import { cityPath } from "@/lib/cities";
 import { aqiBand } from "@/lib/format";
 import { loadNation, loadNationAir, nationSky } from "@/lib/load";
-import { pageMeta, simplePageSchema } from "@/lib/seo";
+import { airHistoryPath, pageMeta, simplePageSchema } from "@/lib/seo";
 import { SITE_NAME, jsonLd } from "@/lib/site";
 
 const PATH = "/air-quality";
@@ -31,7 +34,13 @@ const KEY = [
 
 export default async function AirQualityPage() {
   await connection(); // Rendered per request: a prerendered page can't carry the CSP nonce.
-  const [air, nation] = await Promise.all([loadNationAir(), loadNation()]);
+  const [air, nation, history] = await Promise.all([loadNationAir(), loadNation(), loadAirHistory()]);
+  const today = pakistanToday();
+  const historyOf = (slug: string) => {
+    if (history.kind !== "ok") return null;
+    const days = fillDays(history.byCity[slug] ?? [], today);
+    return days.some((d) => d.aqi !== null) ? days : null;
+  };
   const worst = air[0];
   const best = air[air.length - 1];
 
@@ -67,7 +76,7 @@ export default async function AirQualityPage() {
           <h2 id="ranking-title">Cities ranked by air quality</h2>
           {air.length > 0 ? (
             <div className="climate-scroll" tabIndex={0} role="region" aria-label="Air quality by city">
-              <table className="climate-table aqi-table">
+              <table className={`climate-table aqi-table${history.kind === "ok" ? " has-history" : ""}`}>
                 <thead>
                   <tr>
                     <th scope="col">
@@ -81,6 +90,14 @@ export default async function AirQualityPage() {
                     <th scope="col">
                       PM2.5 <span className="long-label">(µg/m³)</span>
                     </th>
+                    {history.kind === "ok" && (
+                      <th scope="col">
+                        <span className="long-label">Last 30 days</span>
+                        <span className="short-label" aria-hidden="true">
+                          30 days
+                        </span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -100,6 +117,21 @@ export default async function AirQualityPage() {
                           </span>
                         </td>
                         <td>{Math.round(pm25)}</td>
+                        {history.kind === "ok" && (
+                          <td className="spark-cell">
+                            {(() => {
+                              const days = historyOf(city.slug);
+                              return (
+                                <Link prefetch={false} href={airHistoryPath(city)} className="spark-link">
+                                  {days && <Sparkline days={days} />}
+                                  <span className={days ? "visually-hidden" : undefined}>
+                                    {days ? `${city.name} air quality, last 30 days` : "History"}
+                                  </span>
+                                </Link>
+                              );
+                            })()}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

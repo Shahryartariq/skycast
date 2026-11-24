@@ -37,6 +37,7 @@ Measured on the home, city, province and air quality pages of a local production
 - **The outlook at a glance**: every forecast says when rain is most likely ("Rain likely on Sunday, 82%") and flags unhealthy air.
 - **Search anywhere in the world**, with keyboard-friendly suggestions. The big cities are offered before you type, and recent places are remembered on your device until you clear them.
 - **Weather at my location, no typing**: [/my-location](https://getskycast.vercel.app/my-location) shows your IP address, your approximate place and its forecast, with no permission prompt. One tap switches to your exact location instead.
+- **Air quality history** for every city at `/air-quality/lahore`: daily average AQI for the last 30 days, hourly AQI for the last 7, the worst and cleanest days and how many were unhealthy. A scheduled job saves every city's reading once an hour into Postgres, and the ranking page shows each city's month as a sparkline.
 - **A background that matches the weather**: light rain or snow falling behind the forecast, frost in the corners when it feels 5°C or colder, a warm glow at 35°C and up, and slow clouds on ordinary days. A city's forecast slides in when you open it. Everything stays still if your device asks for reduced motion.
 - °C or °F, remembered for your next visit, and times in the place's own time zone.
 - **Dark mode**: follows your device by default, or pick light or dark. The choice is remembered, with no flash on load, and open tabs stay in step.
@@ -59,8 +60,10 @@ Measured on the home, city, province and air quality pages of a local production
 | Font | Bricolage Grotesque, self-hosted through `next/font` |
 | Live data | [OpenWeather](https://openweathermap.org/api) current weather, 5-day forecast, air pollution and geocoding APIs (free plan) |
 | Climate data | ERA5 reanalysis through [Open-Meteo](https://open-meteo.com/), built into a static file by a script |
-| Tests | Vitest (75 unit and API tests), Playwright (130 end-to-end runs on desktop and mobile), axe-core accessibility checks in both themes |
+| Tests | Vitest (102 unit, API and Postgres tests), Playwright (181 end-to-end runs on desktop and mobile), axe-core accessibility checks in both themes |
 | CI | GitHub Actions: dependency audit, lint, type check, unit tests, build, end-to-end tests; CodeQL code scanning; Dependabot |
+| Database | Postgres on [Neon](https://neon.tech) (through Vercel), with [postgres.js](https://github.com/porsager/postgres); only for air quality history |
+| Scheduled job | GitHub Actions, hourly, authenticated with a GitHub OIDC token checked by [jose](https://github.com/panva/jose) |
 | Hosting | Vercel |
 
 ## How it works
@@ -70,9 +73,13 @@ Browser ──▶ Next.js on Vercel ──▶ OpenWeather (live, cached)
             ├─ /                     national overview; lookups with ?q= or ?lat=&lon=
             ├─ /weather/[city]       50 city pages
             ├─ /pakistan/[province]  6 province pages
-            ├─ /air-quality          live ranking
+            ├─ /air-quality          live ranking, with each city's month
+            ├─ /air-quality/[city]   30-day history from Postgres
             ├─ /about                sources and limits
-            └─ /api/places           suggestions for the search box
+            ├─ /api/places           suggestions for the search box
+            └─ /api/cron/air         saves every city's air, once an hour ──▶ Postgres
+
+GitHub Actions (hourly) ──OIDC token──▶ /api/cron/air
 
 scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.json (committed)
 ```
@@ -117,6 +124,12 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 
 **Weather effects in CSS, not a canvas.** The background effects are a few dozen empty elements animated with `transform` and `opacity` only, so they run on the compositor and never trigger layout. The per-particle values (position, speed, delay) come from `nth-child` rules in the stylesheet rather than inline styles, because the strict CSP blocks `style` attributes. Rain and snow go by the condition; otherwise the "feels like" temperature picks cold, hot or calm (`src/lib/effects.ts`). The arrival fade starts at 30% opacity, not zero, because fully transparent text doesn't count as painted and would delay Largest Contentful Paint.
 
+**An hourly job with no shared secret.** The air history needs a reading every hour. Vercel's free plan runs cron jobs once a day, so a GitHub Actions workflow (`.github/workflows/air-history.yml`) calls `/api/cron/air` instead. Rather than a shared secret that could leak, the workflow asks GitHub for a signed OIDC token, and the route checks GitHub's signature, the audience, and that the token comes from this repository's collector workflow on `main` (`src/lib/cron-auth.ts`). A forged or borrowed token gets a 401 before anything else runs.
+
+**Missed hours fill themselves in.** Scheduled workflows can run late or be skipped. Each run checks every city's newest saved hour: up to date means one current reading, and a gap (including the very first run) means one call to OpenWeather's history API from the last saved hour to now. So the first run fills a whole month, and a missed run heals on the next one, always with one request per city. Readings are upserted by city and hour, so running twice does no harm, and rows older than 120 days are deleted.
+
+**Daily averages, not snapshots.** The official AQI uses a 24-hour average, so the history page averages each day's hourly PM2.5 in Pakistan time before converting it. Days with fewer than six hours of readings are shown as gaps, not guesses. Pages read the database through a one-hour cache that the collector clears after each run.
+
 ## Security and accessibility
 
 - A strict Content Security Policy with a fresh nonce on every request (`src/proxy.ts`, `src/lib/csp.ts`), plus `X-Frame-Options`, `Referrer-Policy`, HSTS and a `Permissions-Policy` that allows only geolocation.
@@ -134,6 +147,7 @@ scripts/build-climate.ts ──▶ Open-Meteo ──▶ src/lib/data/climate.jso
 - The free OpenWeather plan allows 60 calls a minute, and a fully cold cache needs more than that. Readings that miss out fill in on later requests. Lookups are rate-limited per server instance, which stops bursts from one client; a busier site should also add a rate-limit rule in the Vercel Firewall, which counts across all instances.
 - `/my-location` relies on Vercel's IP headers. Run anywhere else (including `npm run dev`), it shows "We couldn't tell where you are" and offers the exact location instead.
 - The interface is in English, with Urdu names and search. Full Urdu pages are the natural next step.
+- GitHub pauses scheduled workflows in a repository with no activity for 60 days. If that happens the history stops growing until the workflow is re-enabled, and the next run fills the gap (up to the 120 days kept).
 
 ## Run it locally
 
@@ -162,6 +176,8 @@ WEATHER_SAMPLE_DATA=1 npm run dev
 | `GOOGLE_SITE_VERIFICATION` | No | The code from Google Search Console's HTML tag method. |
 | `GA_MEASUREMENT_ID` | No | Google Analytics 4 measurement ID (`G-…`). When set, the Google tag loads with the page's CSP nonce and the policy allows Google's analytics hosts; when unset, nothing from Google loads. |
 | `WEATHER_SAMPLE_DATA` | No | Set to `1` to use the sample data in `src/lib/fixtures`. Ignored in Vercel production. |
+| `DATABASE_URL` | No | Postgres for air quality history. Vercel's Neon integration sets it (or `POSTGRES_URL`). Without it the site works as before and history pages say so. |
+| `CRON_SECRET` | No | Lets Vercel Cron (or you) run the collector with `Authorization: Bearer <secret>`. At least 32 characters. Not needed for the GitHub workflow. |
 | `SKYCAST_LOOKUPS_PER_MINUTE` | No | Searches and coordinate lookups allowed per IP per minute (default 30; suggestions get twice that). |
 
 ## Scripts

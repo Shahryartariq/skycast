@@ -39,7 +39,7 @@ export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Typed or old links with capitals ("/weather/Lahore") go to the real page.
-  if (/^\/(weather|pakistan)\//i.test(pathname) && pathname !== pathname.toLowerCase()) {
+  if (/^\/(weather|pakistan|air-quality)\//i.test(pathname) && pathname !== pathname.toLowerCase()) {
     const target = request.nextUrl.clone();
     target.pathname = pathname.toLowerCase();
     return NextResponse.redirect(target, 308);
@@ -56,11 +56,12 @@ export function proxy(request: NextRequest) {
   }
 
   // Unknown city and province pages get a real 404 status before any HTML is streamed.
-  const city = /^\/weather\/([^/]+)\/?$/.exec(pathname);
+  // /air-quality/opengraph-image is the air quality page's social image, not a city.
+  const city = /^\/(?:weather|air-quality)\/(?!opengraph-image\/?$)([^/]+)\/?$/.exec(pathname);
   const province = /^\/pakistan\/([^/]+)\/?$/.exec(pathname);
 
   // Here rather than in next.config: its redirects can't send a query with a space, like "New York".
-  const former = city && FORMER_CITIES[city[1]];
+  const former = city && pathname.startsWith("/weather/") && FORMER_CITIES[city[1]];
   if (former) {
     const target = new URL("/", request.url);
     target.searchParams.set("q", former);

@@ -17,6 +17,21 @@ jobs:
     name: Lint, types, tests and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A throwaway Postgres for the air history tests (src/lib/air-history.db.test.ts).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: skycast
+          POSTGRES_PASSWORD: skycast
+          POSTGRES_DB: skycast_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skycast"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       # Actions are pinned to exact commits; Dependabot keeps them current.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,6 +47,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://skycast:skycast@localhost:5432/skycast_test
       - run: npm run build
       - name: Cache the end-to-end test browser
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
